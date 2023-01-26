@@ -3,14 +3,21 @@ import { useEffect, useState } from "react";
 import { sendNotification } from "@tauri-apps/api/notification";
 import { ask } from "@tauri-apps/api/dialog";
 import { listen } from '@tauri-apps/api/event'
+import { event } from "@tauri-apps/api";
+import { emit } from '@tauri-apps/api/event'
 
 
 
+// const unlisten = await listen('k-to-front', (event) => {
+//   console.log("hogehoge");
+// })
 
 function App() {
   const [time, setTime] = useState(0);
 
   const [timerStart, setTimerStart] = useState(false);
+
+  const [junk, setJunk] = useState(0);
 
   const buttons = [
     {
@@ -42,30 +49,27 @@ function App() {
     }
   };
 
+
+  function emit_masseage(masseage: string, time: number) {
+    emit(masseage, time)
+  }
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (timerStart) {
-        if (time > 0) {
-          setTime(time - 1);
-        } else if (time === 0) {
-          sendNotification({
-            title: `Time's up!`,
-            body: `Congrats on completing a session!🎉`,
-          });
-          clearInterval(interval);
-        }
-      }      
-    }, 1000);
-      
+    let unlisten: any;
     async function f() {
-      await listen('back-to-front', (event) => {
-        console.log('back-to-front');
+      unlisten = await listen('now-remining-time', (event) => {
+        setTime(100);
+        if (typeof event.payload === "number") {
+          setJunk(event.payload);
+
+        }
       });
     }
     f();
-
-    return () => clearInterval(interval);
-  }, [timerStart, time]);
+    return () => {
+      f();
+    }
+  }, [])
 
   return (
     <div className="App" style={{ height: "100%" }}>
@@ -83,6 +87,11 @@ function App() {
             ? `0${Math.floor(time / 60)}`
             : `${Math.floor(time / 60)}`
             }:${time % 60 < 10 ? `0${time % 60}` : time % 60}`}
+        </Text><Text fontWeight="bold" fontSize="7xl" color="white">
+          {`${Math.floor(junk / 60) < 10
+            ? `0${Math.floor(junk / 60)}`
+            : `${Math.floor(junk / 60)}`
+            }:${junk % 60 < 10 ? `0${junk % 60}` : junk % 60}`}
         </Text>
         <Flex>
           <Button
@@ -117,7 +126,6 @@ function App() {
           ))}
         </Flex>
       </Flex>
-
     </div>
   );
 }
