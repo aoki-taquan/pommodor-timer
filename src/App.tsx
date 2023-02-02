@@ -19,26 +19,26 @@ function App() {
 
   const [junk, setJunk] = useState(0);
 
+  const [junkisruning, setjunkisruning] = useState(true);
+
   const buttons = [
     {
-      value: 900,
-      display: "15 minutes",
+      value: 5,
+      display: "5 minutes",
     },
     {
-      value: 1800,
-      display: "30 minutes",
-    },
-    {
-      value: 3600,
-      display: "60 minutes",
+      value: 25,
+      display: "25 minutes",
     },
   ];
 
   const toggleTimer = () => {
     setTimerStart(!timerStart);
+    emit_masseage(!timerStart ? "restart" : "pause");
   };
 
   const triggerResetDialog = async () => {
+
     let shouldReset = await ask("Do you want to reset timer?", {
       title: "Pomodoro Timer App",
       type: "warning",
@@ -50,8 +50,8 @@ function App() {
   };
 
 
-  function emit_masseage(masseage: string, time: number) {
-    emit(masseage, time)
+  function emit_masseage(masseage: string) {
+    emit("event-name", masseage)
   }
 
   useEffect(() => {
@@ -66,6 +66,16 @@ function App() {
       });
     }
     f();
+
+    async function g() {
+      unlisten = await listen('is_runing', (event) => {
+        if (typeof event.payload === "boolean") {
+          setTimerStart(event.payload);
+          setjunkisruning(event.payload);
+        }
+      });
+    }
+    g();
     return () => {
       f();
     }
@@ -83,11 +93,6 @@ function App() {
           Pomodoro Timer
         </Text>
         <Text fontWeight="bold" fontSize="7xl" color="white">
-          {`${Math.floor(time / 60) < 10
-            ? `0${Math.floor(time / 60)}`
-            : `${Math.floor(time / 60)}`
-            }:${time % 60 < 10 ? `0${time % 60}` : time % 60}`}
-        </Text><Text fontWeight="bold" fontSize="7xl" color="white">
           {`${Math.floor(junk / 60) < 10
             ? `0${Math.floor(junk / 60)}`
             : `${Math.floor(junk / 60)}`
@@ -102,13 +107,13 @@ function App() {
           >
             {!timerStart ? "Start" : "Pause"}
           </Button>
-          <Button
+          {/* <Button
             background="blue.300"
             marginX={5}
             onClick={triggerResetDialog}
           >
             Reset
-          </Button>
+          </Button> */}
         </Flex>
         <Flex marginTop={10}>
           {buttons.map(({ value, display }) => (
@@ -119,6 +124,7 @@ function App() {
               onClick={() => {
                 setTimerStart(false);
                 setTime(value);
+                emit_masseage("start_" + value);
               }}
             >
               {display}

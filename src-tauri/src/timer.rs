@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 pub struct Timer {
     simple_timer: Option<SimpleTimer>,
     tmp_remining_time: Option<Duration>,
-    is_runing: bool,
+    pub is_runing: bool,
 }
 
 impl Timer {
@@ -33,7 +33,15 @@ impl Timer {
     }
 
     pub fn restart(&mut self) {
-        self.simple_timer = Some(SimpleTimer::new(self.tmp_remining_time.unwrap()));
+        //TODO:これが正しい実装かわからんけどとりあえずmatchする
+        // self.simple_timer = Some(SimpleTimer::new(match self.tmp_remining_time {
+        //     None => Duration::new(0, 0),
+        //     Some(i) => self.tmp_remining_time.unwrap(),
+        // }));
+        self.simple_timer = match self.tmp_remining_time {
+            None => None,
+            Some(i) => Some(SimpleTimer::new(self.tmp_remining_time.unwrap())),
+        };
         self.is_runing = true;
     }
 
@@ -43,16 +51,23 @@ impl Timer {
 
     pub fn remining_time(&self) -> Option<Duration> {
         //なぜas_ref()がつくのかいまいち分からん
-        match self.simple_timer {
-            None => None,
-            _ => Some(self.simple_timer.as_ref().expect("REASON").remaining_time()),
+        //TODO:汚いから治したい一緒にまとめたら異動が発生してだるかった
+        match self.is_runing {
+            true => match self.simple_timer {
+                None => None,
+                _ => Some(self.simple_timer.as_ref().expect("REASON").remaining_time()),
+            },
+            false => match self.tmp_remining_time{
+                None=>None,
+                _=>self.tmp_remining_time,
+            },
         }
     }
-    
-    pub fn update_time_millis(&self)->u64{
-        match  self.remining_time(){
-            None=>1000,
-            _=>0,
+
+    pub fn update_time_millis(&self) -> u64 {
+        match self.remining_time() {
+            None => 1000,
+            _ => (self.remining_time().unwrap().as_micros() % 1000) as u64,
         }
     }
 }

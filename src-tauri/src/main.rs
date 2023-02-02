@@ -7,6 +7,7 @@ mod timer;
 use timer::Timer;
 
 use std::sync::{Arc, Mutex};
+use tauri::api::notification::Notification;
 use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
 fn main() {
     tauri::Builder::default()
@@ -18,19 +19,28 @@ fn main() {
 
             let use_timer_clone = Arc::clone(&use_timer);
 
+            // Notification::new(&app.config().tauri.bundle.identifier)
+            //     .title("New message")
+            //     .body("You've got a new message.")
+            //     .show();
+
             SystemTray::new()
                 .with_menu(
                     SystemTrayMenu::new()
-                        .add_item(CustomMenuItem::new("start", "Start"))
-                        .add_item(CustomMenuItem::new("stop", "Stop"))
+                        .add_item(CustomMenuItem::new("start_5", "Start_5"))
+                        .add_item(CustomMenuItem::new("start_25", "Start_25"))
                         .add_item(CustomMenuItem::new("restert", "Restert"))
+                        .add_item(CustomMenuItem::new("pause", "Pause"))
                         .add_item(CustomMenuItem::new("quit", "Quit")),
                 )
                 .on_event(move |event| {
                     if let SystemTrayEvent::MenuItemClick { id, .. } = event {
                         match id.as_str() {
-                            "start" => {
-                                use_timer_clone.lock().unwrap().start(100);
+                            "start_5" => {
+                                use_timer_clone.lock().unwrap().start(300);
+                            }
+                            "start_25" => {
+                                use_timer_clone.lock().unwrap().start(1500);
                             }
                             "stop" => {
                                 use_timer_clone.lock().unwrap().stop();
@@ -53,30 +63,58 @@ fn main() {
                 .build(app)
                 .unwrap();
 
+            let use_timer_clone3 = Arc::clone(&use_timer);
+
+            let _hoge =
+                app.listen_global("event-name", move |event| match event.payload().unwrap() {
+                    "\"start_5\"" => {
+                        use_timer_clone3.lock().unwrap().start(300);
+                        println!("hogeoge");
+                    }
+                    "\"start_25\"" => {
+                        use_timer_clone3.lock().unwrap().start(1500);
+                    }
+                    "\"stop\"" => {
+                        use_timer_clone3.lock().unwrap().stop();
+                    }
+                    "\"pause\"" => {
+                        use_timer_clone3.lock().unwrap().pause();
+                    }
+                    "\"restart\"" => {
+                        use_timer_clone3.lock().unwrap().restart();
+                    }
+                    _ => {
+                        println!("{:?}", event.payload());
+                    }
+                });
+
             let use_timer_clone2 = Arc::clone(&use_timer);
             use_timer_clone2.lock().unwrap().start(1000);
 
-            std::thread::spawn(move || loop {
-                let tmp_use_timer_clone2 = use_timer_clone2.lock().unwrap();
-                let tmp_reming_time = tmp_use_timer_clone2.remining_time();
-                
-                hundle2
-                    .emit_all(
-                        "now-remining-time",
-                        match tmp_reming_time {
-                            None => 0,
-                            _ => tmp_reming_time.unwrap().as_secs()},
-                    )
-                    .unwrap();
-                let remiing_time_millis=match tmp_reming_time {
-                            None => 999,
-                            _ => tmp_reming_time.unwrap().as_millis(),
-                };
+            std::thread::spawn(move || -> ! {
+                loop {
+                    let next_update_time: u64;
+                    {
+                        let tmp_use_timer_clone2 = use_timer_clone2.lock().unwrap();
+                        let tmp_reming_time = tmp_use_timer_clone2.remining_time();
+                        //TODO:関数にしてやりたい.
+                        hundle2
+                            .emit_all(
+                                "now-remining-time",
+                                match tmp_reming_time {
+                                    None => 0,
+                                    _ => tmp_reming_time.unwrap().as_secs(),
+                                },
+                            )
+                            .unwrap();
 
-                //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない.
-                let next_update_time=0;
-                
-                std::thread::sleep(std::time::Duration::from_millis(next_update_time));
+                        hundle2.emit_all("is_runing", tmp_use_timer_clone2.is_runing);
+                        //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない.
+                        next_update_time = tmp_use_timer_clone2.update_time_millis();
+                    }
+
+                    std::thread::sleep(std::time::Duration::from_millis(next_update_time));
+                }
             });
             Ok(())
         })
