@@ -19,16 +19,17 @@ fn main() {
 
             let use_timer_clone = Arc::clone(&use_timer);
 
-            // Notification::new(&app.config().tauri.bundle.identifier)
-            //     .title("New message")
-            //     .body("You've got a new message.")
-            //     .show();
+            Notification::new(&app.config().tauri.bundle.identifier)
+                .title("New message")
+                .body("You've got a new message.")
+                .show()
+                .unwrap();
 
             SystemTray::new()
                 .with_menu(
                     SystemTrayMenu::new()
-                        .add_item(CustomMenuItem::new("start_5", "Start_5"))
-                        .add_item(CustomMenuItem::new("start_25", "Start_25"))
+                        .add_item(CustomMenuItem::new("start_5", "Start 5分"))
+                        .add_item(CustomMenuItem::new("start_25", "Start 25分"))
                         .add_item(CustomMenuItem::new("restert", "Restert"))
                         .add_item(CustomMenuItem::new("pause", "Pause"))
                         .add_item(CustomMenuItem::new("quit", "Quit")),
@@ -95,6 +96,7 @@ fn main() {
                 loop {
                     let next_update_time: u64;
                     {
+                        use_timer_clone2.lock().unwrap().update_remining_time();
                         let tmp_use_timer_clone2 = use_timer_clone2.lock().unwrap();
                         let tmp_reming_time = tmp_use_timer_clone2.remining_time();
                         //TODO:関数にしてやりたい.
@@ -108,7 +110,9 @@ fn main() {
                             )
                             .unwrap();
 
-                        hundle2.emit_all("is_runing", tmp_use_timer_clone2.is_runing);
+                        hundle2
+                            .emit_all("is_runing", tmp_use_timer_clone2.is_runing)
+                            .unwrap();
                         //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない.
                         next_update_time = tmp_use_timer_clone2.update_time_millis();
                     }

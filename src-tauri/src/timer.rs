@@ -40,12 +40,12 @@ impl Timer {
         // }));
         self.simple_timer = match self.tmp_remining_time {
             None => None,
-            Some(i) => Some(SimpleTimer::new(self.tmp_remining_time.unwrap())),
+            Some(_i) => Some(SimpleTimer::new(self.tmp_remining_time.unwrap())),
         };
         self.is_runing = true;
     }
 
-    fn update_remining_time(&mut self) {
+    pub fn update_remining_time(&mut self) {
         self.tmp_remining_time = self.remining_time();
     }
 
