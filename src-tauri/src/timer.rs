@@ -15,7 +15,7 @@ impl Timer {
     }
 
     pub fn start(&mut self, set_time_second: u64) {
-        self.tmp_remining_time = Some(Duration::from_secs(set_time_second));
+        self.tmp_remining_time = Some(Duration::from_secs(set_time_second+1));
         self.simple_timer = Some(SimpleTimer::new(self.tmp_remining_time.unwrap()));
         self.is_runing = true;
     }
@@ -57,17 +57,17 @@ impl Timer {
                 None => None,
                 _ => Some(self.simple_timer.as_ref().expect("REASON").remaining_time()),
             },
-            false => match self.tmp_remining_time{
-                None=>None,
-                _=>self.tmp_remining_time,
+            false => match self.tmp_remining_time {
+                None => None,
+                _ => self.tmp_remining_time,
             },
         }
     }
 
     pub fn update_time_millis(&self) -> u64 {
         match self.remining_time() {
-            None => 1000,
-            _ => (self.remining_time().unwrap().as_micros() % 1000) as u64,
+            None => 200,
+            _ => (self.remining_time().unwrap().as_micros() % 200) as u64,
         }
     }
 }

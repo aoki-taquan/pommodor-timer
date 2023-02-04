@@ -6,6 +6,7 @@
 mod timer;
 use timer::Timer;
 
+
 use std::sync::{Arc, Mutex};
 use tauri::api::notification::Notification;
 use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
@@ -113,10 +114,14 @@ fn main() {
                         hundle2
                             .emit_all("is_runing", tmp_use_timer_clone2.is_runing)
                             .unwrap();
-                        //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない.
-                        next_update_time = tmp_use_timer_clone2.update_time_millis();
+                        //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない もう作ったかも
+                        if tmp_use_timer_clone2.is_runing {
+                            next_update_time = tmp_use_timer_clone2.update_time_millis();
+                        } else {
+                            next_update_time = 500;
+                            println!("hogehoge")
+                        }
                     }
-
                     std::thread::sleep(std::time::Duration::from_millis(next_update_time));
                 }
             });
@@ -124,4 +129,6 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+
+    println!("last_line");
 }
