@@ -14,6 +14,10 @@
   -webkit-text-size-adjust: 100%;
 }
 
+.bady {
+  background-color: #0f0f0f98;
+}
+
 .container {
   margin: 0;
   padding-top: 10vh;
