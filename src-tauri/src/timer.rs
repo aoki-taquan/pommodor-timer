@@ -64,12 +64,12 @@ impl Timer {
         }
     }
 
-    pub fn update_time_millis(&self) -> u64 {
-        match self.remining_time() {
-            None => 200,
-            _ => (self.remining_time().unwrap().as_micros() % 200) as u64,
-        }
-    }
+    // pub fn update_time_millis(&self) -> u64 {
+    //     match self.remining_time() {
+    //         None => 200,
+    //         _ => (self.remining_time().unwrap().as_micros() % 200) as u64,
+    //     }
+    // }
 }
 
 struct SimpleTimer {

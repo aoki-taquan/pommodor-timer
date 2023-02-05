@@ -8,7 +8,10 @@ use timer::Timer;
 
 use std::sync::{Arc, Mutex};
 
-use tauri::{api::dialog, CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
+use tauri::{
+    api::dialog, CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu,
+    SystemTrayMenuItem,
+};
 fn main() {
     let use_timer = Arc::new(Mutex::new(Timer::new()));
 
@@ -28,15 +31,16 @@ fn main() {
     let app = tauri::Builder::default()
         .setup(move |app| {
             let hundle = app.handle();
-            let hundle2 = app.handle();
 
             SystemTray::new()
                 .with_menu(
                     SystemTrayMenu::new()
-                        .add_item(CustomMenuItem::new("start_5", "Start 5分"))
-                        .add_item(CustomMenuItem::new("start_25", "Start 25分"))
+                        .add_item(CustomMenuItem::new("start_5", "5 minutes"))
+                        .add_item(CustomMenuItem::new("start_25", "25 minutes"))
+                        .add_native_item(SystemTrayMenuItem::Separator)
                         .add_item(CustomMenuItem::new("restert", "Restert"))
                         .add_item(CustomMenuItem::new("pause", "Pause"))
+                        .add_native_item(SystemTrayMenuItem::Separator)
                         .add_item(CustomMenuItem::new("quit", "Quit")),
                 )
                 .on_event(move |event| {
@@ -96,7 +100,7 @@ fn main() {
                     }
                 });
             // {
-            use_timer_clone6.lock().unwrap().start(10);
+            use_timer_clone6.lock().unwrap().start(1500);
             // }
             // std::thread::spawn(move || -> ! {
             // loop {
@@ -164,7 +168,7 @@ fn main() {
             let tmp_tmp_use_timer_clone5 = Arc::clone(&use_timer_clone5);
             let o = Arc::clone(&n);
             let tmp_now_timer_long_clone2 = Arc::clone(&now_timer_long_clone2);
-            app_handle.get_window("main").unwrap().set_focus();
+            _ = app_handle.get_window("main").unwrap().set_focus();
             dialog::ask(
                 Some(&window.as_ref().unwrap()),
                 "hogehoge",
@@ -198,35 +202,28 @@ fn main() {
             );
         }
         {
-            let next_update_time: u64;
-            {
-                use_timer_clone2.lock().unwrap().update_remining_time();
-                let tmp_use_timer_clone2 = use_timer_clone2.lock().unwrap();
-                let tmp_reming_time = tmp_use_timer_clone2.remining_time();
-                //TODO:関数にしてやりたい.
-                app_handle
-                    .emit_all(
-                        "now-remining-time",
-                        match tmp_reming_time {
-                            None => 0,
-                            _ => tmp_reming_time.unwrap().as_secs(),
-                        },
-                    )
-                    .unwrap();
+            use_timer_clone2.lock().unwrap().update_remining_time();
+            let tmp_use_timer_clone2 = use_timer_clone2.lock().unwrap();
+            let tmp_reming_time = tmp_use_timer_clone2.remining_time();
+            //TODO:関数にしてやりたい.
+            app_handle
+                .emit_all(
+                    "now-remining-time",
+                    match tmp_reming_time {
+                        None => 0,
+                        _ => tmp_reming_time.unwrap().as_secs(),
+                    },
+                )
+                .unwrap();
 
-                app_handle
-                    .emit_all("is_runing", tmp_use_timer_clone2.is_runing)
-                    .unwrap();
-                //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない もう作ったかも
-                if tmp_use_timer_clone2.is_runing {
-                    next_update_time = tmp_use_timer_clone2.update_time_millis();
-                } else {
-                    next_update_time = 500;
-                }
-                match tmp_use_timer_clone2.remining_time() {
-                    None => (),
-                    _ => (),
-                }
+            app_handle
+                .emit_all("is_runing", tmp_use_timer_clone2.is_runing)
+                .unwrap();
+            //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない もう作ったかも
+
+            match tmp_use_timer_clone2.remining_time() {
+                None => (),
+                _ => (),
             }
         }
     });
