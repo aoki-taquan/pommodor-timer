@@ -153,8 +153,8 @@ fn main() {
     app.run(move |app_handle, _event| {
         println!("hogehoge");
         {
-            use_timer_clone2.lock().unwrap().update_remining_time();
-            let tmp_use_timer_clone2 = use_timer_clone2.lock().unwrap();
+            let mut tmp_use_timer_clone2 = use_timer_clone2.lock().unwrap();
+            tmp_use_timer_clone2.update_remining_time();
             let tmp_reming_time = tmp_use_timer_clone2.remining_time();
             //TODO:関数にしてやりたい.
             app_handle
