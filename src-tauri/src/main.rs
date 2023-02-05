@@ -147,7 +147,6 @@ fn main() {
     let n = Arc::new(Mutex::new(0));
     let m = Arc::clone(&n);
     app.run(move |app_handle, _event| {
-        println!("hhohohohohhoh");
         let mut l = m.lock().unwrap();
         let boool: bool;
         {
@@ -171,8 +170,8 @@ fn main() {
             _ = app_handle.get_window("main").unwrap().set_focus();
             dialog::ask(
                 Some(&window.as_ref().unwrap()),
-                "hogehoge",
-                "messgae",
+                "Pommodor Timer",
+                "続けますか？",
                 move |answer| {
                     println!("{:?}", answer);
 
