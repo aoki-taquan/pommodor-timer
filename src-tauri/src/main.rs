@@ -100,7 +100,10 @@ fn main() {
                     }
                 });
             // {
-            use_timer_clone6.lock().unwrap().start(1500);
+            let mut tmp_use_timer_clone6 = use_timer_clone6.lock().unwrap();
+            tmp_use_timer_clone6.start(1500);
+            tmp_use_timer_clone6.pause();
+
             // }
             // std::thread::spawn(move || -> ! {
             // loop {
@@ -147,6 +150,31 @@ fn main() {
     let n = Arc::new(Mutex::new(0));
     let m = Arc::clone(&n);
     app.run(move |app_handle, _event| {
+        {
+            use_timer_clone2.lock().unwrap().update_remining_time();
+            let tmp_use_timer_clone2 = use_timer_clone2.lock().unwrap();
+            let tmp_reming_time = tmp_use_timer_clone2.remining_time();
+            //TODO:関数にしてやりたい.
+            app_handle
+                .emit_all(
+                    "now-remining-time",
+                    match tmp_reming_time {
+                        None => 0,
+                        _ => tmp_reming_time.unwrap().as_secs(),
+                    },
+                )
+                .unwrap();
+
+            app_handle
+                .emit_all("is_runing", tmp_use_timer_clone2.is_runing)
+                .unwrap();
+            //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない もう作ったかも
+
+            match tmp_use_timer_clone2.remining_time() {
+                None => (),
+                _ => (),
+            }
+        }
         let mut l = m.lock().unwrap();
         let boool: bool;
         {
@@ -199,31 +227,6 @@ fn main() {
                     *o.lock().unwrap() = 0;
                 },
             );
-        }
-        {
-            use_timer_clone2.lock().unwrap().update_remining_time();
-            let tmp_use_timer_clone2 = use_timer_clone2.lock().unwrap();
-            let tmp_reming_time = tmp_use_timer_clone2.remining_time();
-            //TODO:関数にしてやりたい.
-            app_handle
-                .emit_all(
-                    "now-remining-time",
-                    match tmp_reming_time {
-                        None => 0,
-                        _ => tmp_reming_time.unwrap().as_secs(),
-                    },
-                )
-                .unwrap();
-
-            app_handle
-                .emit_all("is_runing", tmp_use_timer_clone2.is_runing)
-                .unwrap();
-            //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない もう作ったかも
-
-            match tmp_use_timer_clone2.remining_time() {
-                None => (),
-                _ => (),
-            }
         }
     });
 }
