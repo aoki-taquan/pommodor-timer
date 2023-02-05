@@ -15,7 +15,7 @@ impl Timer {
     }
 
     pub fn start(&mut self, set_time_second: u64) {
-        self.tmp_remining_time = Some(Duration::from_secs(set_time_second+1));
+        self.tmp_remining_time = Some(Duration::from_secs(set_time_second + 1));
         self.simple_timer = Some(SimpleTimer::new(self.tmp_remining_time.unwrap()));
         self.is_runing = true;
     }
@@ -64,12 +64,12 @@ impl Timer {
         }
     }
 
-    // pub fn update_time_millis(&self) -> u64 {
-    //     match self.remining_time() {
-    //         None => 200,
-    //         _ => (self.remining_time().unwrap().as_micros() % 200) as u64,
-    //     }
-    // }
+    pub fn update_time_millis(&self) -> u64 {
+        match self.remining_time() {
+            None => 200,
+            _ => (self.remining_time().unwrap().as_micros() % 200) as u64,
+        }
+    }
 }
 
 struct SimpleTimer {

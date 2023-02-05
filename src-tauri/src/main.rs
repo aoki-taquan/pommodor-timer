@@ -31,6 +31,7 @@ fn main() {
     let app = tauri::Builder::default()
         .setup(move |app| {
             let hundle = app.handle();
+            let hundle2 = app.handle();
 
             SystemTray::new()
                 .with_menu(
@@ -47,7 +48,8 @@ fn main() {
                     if let SystemTrayEvent::MenuItemClick { id, .. } = event {
                         match id.as_str() {
                             "start_5" => {
-                                use_timer_clone.lock().unwrap().start(300);
+                                //TODO:ここ変えている３００->10
+                                use_timer_clone.lock().unwrap().start(10);
                                 *now_timer_long_clone.lock().unwrap() = 300;
                                 // now_timer_long_clone
                             }
@@ -103,40 +105,39 @@ fn main() {
             let mut tmp_use_timer_clone6 = use_timer_clone6.lock().unwrap();
             tmp_use_timer_clone6.start(1500);
             tmp_use_timer_clone6.pause();
-
             // }
             // std::thread::spawn(move || -> ! {
-            // loop {
-            //     let next_update_time: u64;
-            //     {
-            //         use_timer_clone2.lock().unwrap().update_remining_time();
-            //         let tmp_use_timer_clone2 = use_timer_clone2.lock().unwrap();
-            //         let tmp_reming_time = tmp_use_timer_clone2.remining_time();
-            //         //TODO:関数にしてやりたい.
-            //         hundle2
-            //             .emit_all(
-            //                 "now-remining-time",
-            //                 match tmp_reming_time {
-            //                     None => 0,
-            //                     _ => tmp_reming_time.unwrap().as_secs(),
-            //                 },
-            //             )
-            //             .unwrap();
+            //     loop {
+            //         let next_update_time: u64;
+            //         {
+            //             use_timer_clone6.lock().unwrap().update_remining_time();
+            //             let tmp_use_timer_clone6 = use_timer_clone6.lock().unwrap();
+            //             let tmp_reming_time = tmp_use_timer_clone6.remining_time();
+            //             //TODO:関数にしてやりたい.
+            //             hundle2
+            //                 .emit_all(
+            //                     "now-remining-time",
+            //                     match tmp_reming_time {
+            //                         None => 0,
+            //                         _ => tmp_reming_time.unwrap().as_secs(),
+            //                     },
+            //                 )
+            //                 .unwrap();
 
-            //         hundle2
-            //             .emit_all("is_runing", tmp_use_timer_clone2.is_runing)
-            //             .unwrap();
-            //         //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない もう作ったかも
-            //         if tmp_use_timer_clone2.is_runing {
-            //             next_update_time = tmp_use_timer_clone2.update_time_millis();
-            //         } else {
-            //             next_update_time = 500;
+            //             hundle2
+            //                 .emit_all("is_runing", tmp_use_timer_clone6.is_runing)
+            //                 .unwrap();
+            //             //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない もう作ったかも
+            //             if tmp_use_timer_clone6.is_runing {
+            //                 next_update_time = tmp_use_timer_clone6.update_time_millis();
+            //             } else {
+            //                 next_update_time = 500;
+            //             }
+            //             match tmp_use_timer_clone6.remining_time() {
+            //                 None => (),
+            //                 _ => (),
+            //             }
             //         }
-            //         match tmp_use_timer_clone2.remining_time() {
-            //             None => (),
-            //             _ => (),
-            //         }
-            //     }
             //         std::thread::sleep(std::time::Duration::from_millis(next_update_time));
             //     }
             // });
@@ -150,6 +151,7 @@ fn main() {
     let n = Arc::new(Mutex::new(0));
     let m = Arc::clone(&n);
     app.run(move |app_handle, _event| {
+        println!("hogehoge");
         {
             use_timer_clone2.lock().unwrap().update_remining_time();
             let tmp_use_timer_clone2 = use_timer_clone2.lock().unwrap();
