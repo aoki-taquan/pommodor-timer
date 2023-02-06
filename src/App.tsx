@@ -1,26 +1,17 @@
 import { Button, Flex, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
-import { sendNotification } from "@tauri-apps/api/notification";
 import { ask } from "@tauri-apps/api/dialog";
 import { listen } from '@tauri-apps/api/event'
-import { event } from "@tauri-apps/api";
 import { emit } from '@tauri-apps/api/event'
 
 
 
-// const unlisten = await listen('k-to-front', (event) => {
-//   console.log("hogehoge");
-// })
-
 function App() {
+  //おまじない
+  const [timerStart, setTimerStart] = useState(false);
   const [time, setTime] = useState(0);
 
-  const [timerStart, setTimerStart] = useState(false);
-
-  const [junk, setJunk] = useState(0);
-
-  const [junkisruning, setjunkisruning] = useState(true);
-
+  //使うボタンの定義
   const buttons = [
     {
       value: 5,
@@ -32,35 +23,23 @@ function App() {
     },
   ];
 
+  //startとpuseの切り替え
   const toggleTimer = () => {
     setTimerStart(!timerStart);
     emit_masseage(!timerStart ? "restart" : "pause");
   };
 
-  const triggerResetDialog = async () => {
-
-    let shouldReset = await ask("Do you want to reset timer?", {
-      title: "Pomodoro Timer App",
-      type: "warning",
-    });
-    if (shouldReset) {
-      setTime(900);
-      setTimerStart(false);
-    }
-  };
-
-
   function emit_masseage(masseage: string) {
     emit("event-name", masseage)
   }
 
+  // Core側から値を受け取る
   useEffect(() => {
     let unlisten: any;
     async function f() {
       unlisten = await listen('now-remining-time', (event) => {
-        setTime(100);
         if (typeof event.payload === "number") {
-          setJunk(event.payload);
+          setTime(event.payload);
 
         }
       });
@@ -71,7 +50,6 @@ function App() {
       unlisten = await listen('is_runing', (event) => {
         if (typeof event.payload === "boolean") {
           setTimerStart(event.payload);
-          setjunkisruning(event.payload);
         }
       });
     }
@@ -81,6 +59,7 @@ function App() {
     }
   }, [])
 
+  //描画する部分
   return (
     <div className="App" style={{ height: "100%" }}>
       <Flex
@@ -93,10 +72,10 @@ function App() {
           Pomodoro Timer
         </Text>
         <Text fontWeight="bold" fontSize="7xl" color="white">
-          {`${Math.floor(junk / 60) < 10
-            ? `0${Math.floor(junk / 60)}`
-            : `${Math.floor(junk / 60)}`
-            }:${junk % 60 < 10 ? `0${junk % 60}` : junk % 60}`}
+          {`${Math.floor(time / 60) < 10
+            ? `0${Math.floor(time / 60)}`
+            : `${Math.floor(time / 60)}`
+            }:${time % 60 < 10 ? `0${time % 60}` : time % 60}`}
         </Text>
         <Flex>
           <Button
@@ -107,13 +86,6 @@ function App() {
           >
             {!timerStart ? "Start" : "Pause"}
           </Button>
-          {/* <Button
-            background="blue.300"
-            marginX={5}
-            onClick={triggerResetDialog}
-          >
-            Reset
-          </Button> */}
         </Flex>
         <Flex marginTop={10}>
           {buttons.map(({ value, display }) => (
@@ -123,7 +95,6 @@ function App() {
               color="white"
               onClick={() => {
                 setTimerStart(false);
-                setTime(value);
                 emit_masseage("start_" + value);
               }}
             >
