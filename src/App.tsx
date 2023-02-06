@@ -71,6 +71,7 @@ function App() {
         <Text color="white" fontWeight="bold" marginTop="20" fontSize="35">
           Pomodoro Timer
         </Text>
+        {/* いい感じに時間が表記されるようにする */}
         <Text fontWeight="bold" fontSize="7xl" color="white">
           {`${Math.floor(time / 60) < 10
             ? `0${Math.floor(time / 60)}`
