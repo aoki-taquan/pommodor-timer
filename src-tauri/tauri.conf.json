@@ -63,7 +63,8 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "test-app",
+        "title": "Pommodor Timer",
+        "theme": "Dark",
         "width": 800
       }
     ]
