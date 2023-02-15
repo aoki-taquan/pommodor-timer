@@ -1,10 +1,18 @@
 import { Button, Flex, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
-import { ask } from "@tauri-apps/api/dialog";
 import { listen } from '@tauri-apps/api/event'
 import { emit } from '@tauri-apps/api/event'
 
+import { extendTheme, type ThemeConfig } from '@chakra-ui/react'
 
+// 2. Add your color mode config
+const config: ThemeConfig = {
+  initialColorMode: 'dark',
+  useSystemColorMode: false,
+}
+
+// 3. extend the theme
+const theme = extendTheme({ config })
 
 function App() {
   //おまじない
@@ -35,6 +43,7 @@ function App() {
 
   // Core側から値を受け取る
   useEffect(() => {
+    theme;
     let unlisten: any;
     async function f() {
       unlisten = await listen('now-remining-time', (event) => {
