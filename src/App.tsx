@@ -95,7 +95,7 @@ function App() {
               background="green.300"
               color="white"
               onClick={() => {
-                setTimerStart(false);
+                setTimerStart(true);
                 emit_masseage("start_" + value);
               }}
             >

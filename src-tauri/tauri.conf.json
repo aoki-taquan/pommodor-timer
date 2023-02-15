@@ -6,8 +6,8 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "test-app",
-    "version": "0.0.0"
+    "productName": "Pomodor Timer",
+    "version": "0.2.0"
   },
   "tauri": {
     "allowlist": {
