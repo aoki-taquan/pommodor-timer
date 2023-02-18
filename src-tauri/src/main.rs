@@ -16,6 +16,12 @@ use tauri::{
     SystemTrayMenuItem,
 };
 
+//音系
+
+use rodio::{Decoder, OutputStream, Sink};
+use std::fs::File;
+use std::io::BufReader;
+
 fn main() {
     let use_timer = Arc::new(Mutex::new(Timer::new()));
 
@@ -61,7 +67,7 @@ fn main() {
                     if let SystemTrayEvent::MenuItemClick { id, .. } = event {
                         match id.as_str() {
                             "start_5" => {
-                                use_timer_to_sys_tray.lock().unwrap().start(300);
+                                use_timer_to_sys_tray.lock().unwrap().start(10);
                                 *now_timer_long_to_sys_tray.lock().unwrap() = 300;
                             }
                             "start_25" => {
@@ -201,6 +207,24 @@ fn main() {
             let tmp_tmp_use_timer_to_ask = Arc::clone(&use_timer_to_ask);
             let do_alarm_work_ask_f = Arc::clone(&do_alarm_work);
             let tmp_now_timer_long_to_ask = Arc::clone(&now_timer_long_to_ask);
+            std::thread::spawn(|| {
+                //音をならす
+                // WAVファイルを開く
+                let file = File::open("sound/marimba.wav").unwrap();
+                let source = Decoder::new(BufReader::new(file)).unwrap();
+
+                // 出力ストリームを作成する
+                let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+                let sink = Sink::try_new(&stream_handle).unwrap();
+
+                // ソースをシンクに追加し、再生する
+                sink.append(source);
+                sink.play();
+                // 再生が終了するまで待機する
+                std::thread::sleep(std::time::Duration::from_millis(5000));
+            });
+            //音をならす
+            // WAVファイルを開く
 
             dialog::ask(
                 Some(&window.as_ref().unwrap()),
