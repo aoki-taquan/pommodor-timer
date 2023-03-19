@@ -68,7 +68,7 @@ fn main() {
                         match id.as_str() {
                             "start_5" => {
                                 use_timer_to_sys_tray.lock().unwrap().start(10);
-                                *now_timer_long_to_sys_tray.lock().unwrap() = 300;
+                                *now_timer_long_to_sys_tray.lock().unwrap() = 1;
                             }
                             "start_25" => {
                                 use_timer_to_sys_tray.lock().unwrap().start(1500);
@@ -181,6 +181,11 @@ fn main() {
     app.run(move |app_handle, _event| {
         let mut tmp_do_alarm_work_to_ask = do_alarm_work_to_ask.lock().unwrap();
 
+        let filePash = app_handle
+            .path_resolver()
+            .resolve_resource("../assets/marimba.wav")
+            .expect("file no find");
+
         // アラームを作動させるべきかの判断をしている。
         let boool: bool;
         {
@@ -207,10 +212,10 @@ fn main() {
             let tmp_tmp_use_timer_to_ask = Arc::clone(&use_timer_to_ask);
             let do_alarm_work_ask_f = Arc::clone(&do_alarm_work);
             let tmp_now_timer_long_to_ask = Arc::clone(&now_timer_long_to_ask);
-            std::thread::spawn(|| {
+            std::thread::spawn(move || {
                 //音をならす
                 // WAVファイルを開く
-                let file = File::open("sound/marimba.wav").unwrap();
+                let file = File::open(&filePash).unwrap();
                 let source = Decoder::new(BufReader::new(file)).unwrap();
 
                 // 出力ストリームを作成する
