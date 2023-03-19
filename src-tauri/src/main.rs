@@ -222,6 +222,7 @@ fn main() {
                 let (_stream, stream_handle) = OutputStream::try_default().unwrap();
                 let sink = Sink::try_new(&stream_handle).unwrap();
 
+
                 // ソースをシンクに追加し、再生する
                 sink.append(source);
                 sink.play();
