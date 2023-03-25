@@ -37,17 +37,42 @@ fn chenge_now_time_longer(now_time_longer: State<Mutex<NowTimerLonger>>, new_tim
     now_time_longer.lock().unwrap().0 = new_time_longer;
 }
 
+#[tauri::command]
+fn remining_time(timer: State<Mutex<Timer>>) -> Option<std::time::Duration> {
+    timer.lock().unwrap().remining_time()
+}
+
+#[tauri::command]
+fn start_timer(timer: State<Mutex<Timer>>, set_time_second: u64) {
+    timer.lock().unwrap().start(set_time_second);
+}
+
+#[tauri::command]
+fn stop_timer(timer: State<Mutex<Timer>>) {
+    timer.lock().unwrap().stop();
+}
+
+#[tauri::command]
+fn pause_timer(timer: State<Mutex<Timer>>) {
+    timer.lock().unwrap().pause();
+}
+
+#[tauri::command]
+fn restart_timer(timer: State<Mutex<Timer>>) {
+    timer.lock().unwrap().restart();
+}
+
+#[tauri::command]
+fn is_runing_timer(timer: State<Mutex<Timer>>) -> bool {
+    timer.lock().unwrap().is_runing
+}
+
+#[tauri::command]
+fn update_time_millisecond(timer: State<Mutex<Timer>>) -> u64 {
+    timer.lock().unwrap().update_time_millis()
+}
+
 fn main() {
-    let use_timer = Arc::new(Mutex::new(Timer::new()));
-
-    //非同期で必要な処理
-    let use_timer_to_sys_tray = Arc::clone(&use_timer);
-    let use_timer_to_listen_global = Arc::clone(&use_timer);
-    let use_timer_to_do_ask = Arc::clone(&use_timer);
-    let use_timer_to_ask = Arc::clone(&use_timer);
-    let use_timer_to_emit = Arc::clone(&use_timer);
-    let use_timer_to_start = Arc::clone(&use_timer);
-
     let do_alarm_work = Arc::new(Mutex::new(false));
 
     //非同期で必要な処理
@@ -56,6 +81,7 @@ fn main() {
 
     let app = tauri::Builder::default()
         .manage(Mutex::new(NowTimerLonger(1500)))
+        .manage(Mutex::new(Timer::new()))
         .setup(move |app| {
             let app_hundle = app.handle();
             let app_hundle2 = app.handle();
@@ -81,21 +107,21 @@ fn main() {
                     if let SystemTrayEvent::MenuItemClick { id, .. } = event {
                         match id.as_str() {
                             "start_5" => {
-                                use_timer_to_sys_tray.lock().unwrap().start(300);
+                                start_timer(app_hundle.state(), 300);
                                 chenge_now_time_longer(app_hundle.state(), 300);
                             }
                             "start_25" => {
-                                use_timer_to_sys_tray.lock().unwrap().start(1500);
+                                start_timer(app_hundle.state(), 1500);
                                 chenge_now_time_longer(app_hundle.state(), 1500);
                             }
                             "stop" => {
-                                use_timer_to_sys_tray.lock().unwrap().stop();
+                                stop_timer(app_hundle.state());
                             }
                             "pause" => {
-                                use_timer_to_sys_tray.lock().unwrap().pause();
+                                pause_timer(app_hundle.state());
                             }
                             "restert" => {
-                                use_timer_to_sys_tray.lock().unwrap().restart();
+                                restart_timer(app_hundle.state());
                             }
                             "quit" => {
                                 //アプリの終了
@@ -109,24 +135,25 @@ fn main() {
                 })
                 .build(app)
                 .unwrap();
+
             //WebViewからの情報を受け取りそれの処理をする。
             app.listen_global("event-name", move |event| match event.payload().unwrap() {
                 "\"start_5\"" => {
-                    use_timer_to_listen_global.lock().unwrap().start(300);
+                    start_timer(app_hundle3.state(), 300);
                     chenge_now_time_longer(app_hundle3.state(), 300);
                 }
                 "\"start_25\"" => {
-                    use_timer_to_listen_global.lock().unwrap().start(1500);
+                    start_timer(app_hundle3.state(), 1500);
                     chenge_now_time_longer(app_hundle3.state(), 1500);
                 }
                 "\"stop\"" => {
-                    use_timer_to_listen_global.lock().unwrap().stop();
+                    stop_timer(app_hundle3.state());
                 }
                 "\"pause\"" => {
-                    use_timer_to_listen_global.lock().unwrap().pause();
+                    pause_timer(app_hundle3.state());
                 }
                 "\"restart\"" => {
-                    use_timer_to_listen_global.lock().unwrap().restart();
+                    restart_timer(app_hundle3.state());
                 }
                 _ => {
                     println!("{:?}", event.payload());
@@ -142,9 +169,7 @@ fn main() {
                         //アラームが出ている時に実行するとバグるから
                         if !*do_alarm_work_to_emit.lock().unwrap() {
                             {
-                                use_timer_to_emit.lock().unwrap().update_remining_time();
-                                let tmp_use_timer_to_emit = use_timer_to_emit.lock().unwrap();
-                                let tmp_reming_time = tmp_use_timer_to_emit.remining_time();
+                                let tmp_reming_time = remining_time(app_hundle2.state());
                                 //TODO:関数にしてやりたい.
                                 app_hundle2
                                     .emit_all(
@@ -157,17 +182,13 @@ fn main() {
                                     .unwrap();
 
                                 app_hundle2
-                                    .emit_all("is_runing", tmp_use_timer_to_emit.is_runing)
+                                    .emit_all("is_runing", is_runing_timer(app_hundle2.state()))
                                     .unwrap();
                                 //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない もう作ったかも
-                                if tmp_use_timer_to_emit.is_runing {
-                                    next_update_time = tmp_use_timer_to_emit.update_time_millis();
+                                if is_runing_timer(app_hundle2.state()) {
+                                    next_update_time = update_time_millisecond(app_hundle2.state());
                                 } else {
                                     next_update_time = 500;
-                                }
-                                match tmp_use_timer_to_emit.remining_time() {
-                                    None => (),
-                                    _ => (),
                                 }
                             }
                         } else {
@@ -181,10 +202,9 @@ fn main() {
 
             //最初の値の設定
             {
-                let mut tmp_use_timer_to_start = use_timer_to_start.lock().unwrap();
-                tmp_use_timer_to_start.start(1500);
+                start_timer(app.state(), 1500);
                 chenge_now_time_longer(app.state(), 1500);
-                tmp_use_timer_to_start.pause();
+                pause_timer(app.state());
             }
             Ok(())
         })
@@ -205,12 +225,11 @@ fn main() {
         // アラームを作動させるべきかの判断をしている。
         let boool: bool;
         {
-            let tmp_use_timer_to_do_ask = use_timer_to_do_ask.lock().unwrap();
-            boool = match tmp_use_timer_to_do_ask.remining_time() {
+            boool = match remining_time(app_handle.state()) {
                 None => false,
                 _ => {
-                    tmp_use_timer_to_do_ask.remining_time().unwrap().as_secs() == 0
-                        && tmp_use_timer_to_do_ask.is_runing
+                    remining_time(app_handle.state()).unwrap().as_secs() == 0
+                        && is_runing_timer(app_handle.state())
                         && *tmp_do_alarm_work_to_ask == false
                 }
             };
@@ -225,7 +244,7 @@ fn main() {
 
             //アラーム用の非同期処理で必要な部分
             //TODO:こんなもん必要ない様にしたい
-            let tmp_tmp_use_timer_to_ask = Arc::clone(&use_timer_to_ask);
+
             let do_alarm_work_ask_f = Arc::clone(&do_alarm_work);
 
             std::thread::spawn(move || {
@@ -269,13 +288,10 @@ fn main() {
                                 app_handle2.state::<Mutex<NowTimerLonger>>(),
                                 tmp_now_timer_long,
                             );
-                            tmp_tmp_use_timer_to_ask
-                                .lock()
-                                .unwrap()
-                                .start(tmp_now_timer_long);
+                            start_timer(app_handle2.state::<Mutex<Timer>>(), tmp_now_timer_long);
                         }
 
-                        false => tmp_tmp_use_timer_to_ask.lock().unwrap().stop(),
+                        false => stop_timer(app_handle2.state::<Mutex<Timer>>()),
                     }
                     *do_alarm_work_ask_f.lock().unwrap() = false;
                 },
