@@ -5,10 +5,15 @@
 
 // 独自のモジュール これの中身に関しては中身に関してはそんなに気にしなくていい
 mod timer;
+// use tauri::async_runtime::Mutex;
+use tauri::State;
 use timer::Timer;
 
 // 非同期処理回りのモジュール
 use std::sync::{Arc, Mutex};
+
+//まだ実装していない
+struct NowTimerLonger(u64);
 
 //使っているミドルウェアのモジュール
 use tauri::{
@@ -16,11 +21,21 @@ use tauri::{
     SystemTrayMenuItem,
 };
 
-//音系
+//音楽を再生する
 
 use rodio::{Decoder, OutputStream, Sink};
 use std::fs::File;
 use std::io::BufReader;
+
+#[tauri::command]
+fn get_new_time_longer(now_time_longer: State<Mutex<NowTimerLonger>>) -> u64 {
+    now_time_longer.lock().unwrap().0
+}
+
+#[tauri::command]
+fn chenge_now_time_longer(now_time_longer: State<Mutex<NowTimerLonger>>, new_time_longer: u64) {
+    now_time_longer.lock().unwrap().0 = new_time_longer;
+}
 
 fn main() {
     let use_timer = Arc::new(Mutex::new(Timer::new()));
@@ -33,13 +48,6 @@ fn main() {
     let use_timer_to_emit = Arc::clone(&use_timer);
     let use_timer_to_start = Arc::clone(&use_timer);
 
-    let now_timer_long = Arc::new(Mutex::new(1500));
-
-    //非同期で必要な処理
-    let now_timer_long_to_sys_tray = Arc::clone(&now_timer_long);
-    let now_timer_long_to_ask = Arc::clone(&now_timer_long);
-    let now_timer_long_to_emit = Arc::clone(&now_timer_long);
-
     let do_alarm_work = Arc::new(Mutex::new(false));
 
     //非同期で必要な処理
@@ -47,9 +55,15 @@ fn main() {
     let do_alarm_work_to_emit = Arc::clone(&do_alarm_work);
 
     let app = tauri::Builder::default()
+        .manage(Mutex::new(NowTimerLonger(1500)))
         .setup(move |app| {
             let app_hundle = app.handle();
             let app_hundle2 = app.handle();
+            let app_hundle3 = app.handle();
+
+            #[cfg(target_os = "macos")]
+            // don't show on the taskbar/springboard
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             //システムトレイ(タスクトレイ)の処理
             SystemTray::new()
@@ -67,12 +81,12 @@ fn main() {
                     if let SystemTrayEvent::MenuItemClick { id, .. } = event {
                         match id.as_str() {
                             "start_5" => {
-                                use_timer_to_sys_tray.lock().unwrap().start(10);
-                                *now_timer_long_to_sys_tray.lock().unwrap() = 1;
+                                use_timer_to_sys_tray.lock().unwrap().start(300);
+                                chenge_now_time_longer(app_hundle.state(), 300);
                             }
                             "start_25" => {
                                 use_timer_to_sys_tray.lock().unwrap().start(1500);
-                                *now_timer_long_to_sys_tray.lock().unwrap() = 1500;
+                                chenge_now_time_longer(app_hundle.state(), 1500);
                             }
                             "stop" => {
                                 use_timer_to_sys_tray.lock().unwrap().stop();
@@ -99,11 +113,11 @@ fn main() {
             app.listen_global("event-name", move |event| match event.payload().unwrap() {
                 "\"start_5\"" => {
                     use_timer_to_listen_global.lock().unwrap().start(300);
-                    *now_timer_long_to_emit.lock().unwrap() = 300;
+                    chenge_now_time_longer(app_hundle3.state(), 300);
                 }
                 "\"start_25\"" => {
                     use_timer_to_listen_global.lock().unwrap().start(1500);
-                    *now_timer_long_to_emit.lock().unwrap() = 1500;
+                    chenge_now_time_longer(app_hundle3.state(), 1500);
                 }
                 "\"stop\"" => {
                     use_timer_to_listen_global.lock().unwrap().stop();
@@ -169,10 +183,12 @@ fn main() {
             {
                 let mut tmp_use_timer_to_start = use_timer_to_start.lock().unwrap();
                 tmp_use_timer_to_start.start(1500);
+                chenge_now_time_longer(app.state(), 1500);
                 tmp_use_timer_to_start.pause();
             }
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
@@ -181,10 +197,10 @@ fn main() {
     app.run(move |app_handle, _event| {
         let mut tmp_do_alarm_work_to_ask = do_alarm_work_to_ask.lock().unwrap();
 
-        let filePash = app_handle
+        let file_path = app_handle
             .path_resolver()
-            .resolve_resource("../assets/marimba.wav")
-            .expect("file no find");
+            .resolve_resource("../assets/sound/marimba.wav")
+            .expect("file not find");
 
         // アラームを作動させるべきかの判断をしている。
         let boool: bool;
@@ -202,26 +218,25 @@ fn main() {
 
         // アラームの作動
         if boool {
-            println!("runからのcall");
             *tmp_do_alarm_work_to_ask = true;
 
             //windowsを最前面にする
             _ = app_handle.get_window("main").unwrap().set_focus();
 
             //アラーム用の非同期処理で必要な部分
+            //TODO:こんなもん必要ない様にしたい
             let tmp_tmp_use_timer_to_ask = Arc::clone(&use_timer_to_ask);
             let do_alarm_work_ask_f = Arc::clone(&do_alarm_work);
-            let tmp_now_timer_long_to_ask = Arc::clone(&now_timer_long_to_ask);
+
             std::thread::spawn(move || {
                 //音をならす
                 // WAVファイルを開く
-                let file = File::open(&filePash).unwrap();
+                let file = File::open(&file_path).unwrap();
                 let source = Decoder::new(BufReader::new(file)).unwrap();
 
                 // 出力ストリームを作成する
                 let (_stream, stream_handle) = OutputStream::try_default().unwrap();
                 let sink = Sink::try_new(&stream_handle).unwrap();
-
 
                 // ソースをシンクに追加し、再生する
                 sink.append(source);
@@ -229,36 +244,37 @@ fn main() {
                 // 再生が終了するまで待機する
                 std::thread::sleep(std::time::Duration::from_millis(5000));
             });
-            //音をならす
-            // WAVファイルを開く
-
+            //アラームのダイアログを出す
+            //hundle必要？
+            let app_handle2 = app_handle.clone();
             dialog::ask(
                 Some(&window.as_ref().unwrap()),
-                "Pommodor Timer",
+                "Pomodoro Timer",
                 "続けますか？",
                 move |answer| {
                     //アラームの返答の処理
-                    println!("{:?}", answer);
-
                     match answer {
                         true => {
-                            let mut tmp_tmp_now_timer_long_to_ask =
-                                tmp_now_timer_long_to_ask.lock().unwrap();
+                            let tmp_now_timer_long = match get_new_time_longer(
+                                app_handle2.state::<Mutex<NowTimerLonger>>(),
+                            ) {
+                                1500 => 300,
+                                300 => 1500,
+                                _ => {
+                                    panic!("now_timer_longerの値がおかしいです。")
+                                }
+                            };
 
-                            let tmp3_now_timer_long_to_ask;
-                            {
-                                tmp3_now_timer_long_to_ask = match *tmp_tmp_now_timer_long_to_ask {
-                                    1500 => 300,
-                                    300 => 1500,
-                                    _ => 300,
-                                };
-                            }
-                            *tmp_tmp_now_timer_long_to_ask = tmp3_now_timer_long_to_ask;
+                            chenge_now_time_longer(
+                                app_handle2.state::<Mutex<NowTimerLonger>>(),
+                                tmp_now_timer_long,
+                            );
                             tmp_tmp_use_timer_to_ask
                                 .lock()
                                 .unwrap()
-                                .start(*tmp_tmp_now_timer_long_to_ask);
+                                .start(tmp_now_timer_long);
                         }
+
                         false => tmp_tmp_use_timer_to_ask.lock().unwrap().stop(),
                     }
                     *do_alarm_work_ask_f.lock().unwrap() = false;
