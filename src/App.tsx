@@ -40,13 +40,10 @@ function App() {
     // emit_masseage(!timerStart ? "restart" : "pause");
   };
 
-  function emit_masseage(masseage: string) {
-    emit("event-name", masseage)
-  }
 
   function stert_timer(set_time_second: number) {
     invoke("start_timer", { setTimeSecond: set_time_second * 60 });
-    invoke("chenge_emit_time", { setTimeSecond: set_time_second * 60 });
+    invoke("chenge_now_time_longer", { newTimeLonger: set_time_second * 60 });
 
   }
 
@@ -64,7 +61,6 @@ function App() {
 
         }
       });
-      invoke("junk_state_test");
 
     }
     f();
