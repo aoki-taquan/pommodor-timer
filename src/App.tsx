@@ -1,7 +1,7 @@
 import { Button, ColorModeContext, DarkMode, Flex, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { listen } from '@tauri-apps/api/event'
-import { emit } from '@tauri-apps/api/event'
+import { invoke } from '@tauri-apps/api/tauri'
 
 import { extendTheme, type ThemeConfig } from '@chakra-ui/react'
 import { ChakraProvider, useColorMode } from '@chakra-ui/react'
@@ -36,12 +36,20 @@ function App() {
   //startとpuseの切り替え
   const toggleTimer = () => {
     setTimerStart(!timerStart);
-    emit_masseage(!timerStart ? "restart" : "pause");
+    !timerStart ? invoke("restart_timer") : invoke("pause_timer");
+    // emit_masseage(!timerStart ? "restart" : "pause");
   };
 
   function emit_masseage(masseage: string) {
     emit("event-name", masseage)
   }
+
+  function stert_timer(set_time_second: number) {
+    invoke("start_timer", { setTimeSecond: set_time_second * 60 });
+    invoke("chenge_emit_time", { setTimeSecond: set_time_second * 60 });
+
+  }
+
 
   // Core側から値を受け取る
   useEffect(() => {
@@ -56,6 +64,8 @@ function App() {
 
         }
       });
+      invoke("junk_state_test");
+
     }
     f();
 
@@ -109,7 +119,7 @@ function App() {
               color="white"
               onClick={() => {
                 setTimerStart(true);
-                emit_masseage("start_" + value);
+                stert_timer(value);
               }}
             >
               {display}

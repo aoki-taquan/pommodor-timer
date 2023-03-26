@@ -6,14 +6,18 @@
 // 独自のモジュール これの中身に関しては中身に関してはそんなに気にしなくていい
 mod timer;
 // use tauri::async_runtime::Mutex;
+use tauri::AppHandle;
 use tauri::State;
 use timer::Timer;
-
 // 非同期処理回りのモジュール
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
+use std::time;
+use std::time::Duration;
 
 //まだ実装していない
 struct NowTimerLonger(u64);
+
+struct EmitTime(Option<Duration>);
 
 //使っているミドルウェアのモジュール
 use tauri::{
@@ -72,19 +76,23 @@ fn update_time_millisecond(timer: State<Mutex<Timer>>) -> u64 {
     timer.lock().unwrap().update_time_millis()
 }
 
+#[tauri::command]
+fn get_emit_time(emit_time: State<Mutex<EmitTime>>) -> Option<Duration> {
+    emit_time.lock().unwrap().0
+}
+
+#[tauri::command]
+fn chenge_emit_time(emit_time: State<Mutex<EmitTime>>, new_emit_time: Option<Duration>) {
+    emit_time.lock().unwrap().0 = new_emit_time;
+}
+
 fn main() {
-    let do_alarm_work = Arc::new(Mutex::new(false));
-
-    //非同期で必要な処理
-    let do_alarm_work_to_ask = Arc::clone(&do_alarm_work);
-    let do_alarm_work_to_emit = Arc::clone(&do_alarm_work);
-
     let app = tauri::Builder::default()
-        .manage(Mutex::new(NowTimerLonger(1500)))
+        .manage(Mutex::new(NowTimerLonger(0)))
         .manage(Mutex::new(Timer::new()))
+        .manage(Mutex::new(EmitTime(None)))
         .setup(move |app| {
             let app_hundle = app.handle();
-            let app_hundle2 = app.handle();
             let app_hundle3 = app.handle();
 
             #[cfg(target_os = "macos")]
@@ -93,6 +101,7 @@ fn main() {
 
             //システムトレイ(タスクトレイ)の処理
             SystemTray::new()
+                .with_id("main")
                 .with_menu(
                     SystemTrayMenu::new()
                         .add_item(CustomMenuItem::new("start_5", "5 minutes"))
@@ -135,92 +144,44 @@ fn main() {
                 })
                 .build(app)
                 .unwrap();
-
-            //WebViewからの情報を受け取りそれの処理をする。
-            app.listen_global("event-name", move |event| match event.payload().unwrap() {
-                "\"start_5\"" => {
-                    start_timer(app_hundle3.state(), 300);
-                    chenge_now_time_longer(app_hundle3.state(), 300);
-                }
-                "\"start_25\"" => {
-                    start_timer(app_hundle3.state(), 1500);
-                    chenge_now_time_longer(app_hundle3.state(), 1500);
-                }
-                "\"stop\"" => {
-                    stop_timer(app_hundle3.state());
-                }
-                "\"pause\"" => {
-                    pause_timer(app_hundle3.state());
-                }
-                "\"restart\"" => {
-                    restart_timer(app_hundle3.state());
-                }
-                _ => {
-                    println!("{:?}", event.payload());
-                }
-            });
-
-            // WebViewへの情報の送信
-            //別なスレッドで処理して、定期的に実行させている
-            std::thread::spawn(move || -> ! {
-                loop {
-                    let next_update_time: u64;
-                    {
-                        //アラームが出ている時に実行するとバグるから
-                        if !*do_alarm_work_to_emit.lock().unwrap() {
-                            {
-                                let tmp_reming_time = remining_time(app_hundle2.state());
-                                //TODO:関数にしてやりたい.
-                                app_hundle2
-                                    .emit_all(
-                                        "now-remining-time",
-                                        match tmp_reming_time {
-                                            None => 0,
-                                            _ => tmp_reming_time.unwrap().as_secs(),
-                                        },
-                                    )
-                                    .unwrap();
-
-                                app_hundle2
-                                    .emit_all("is_runing", is_runing_timer(app_hundle2.state()))
-                                    .unwrap();
-                                //TODO:timer.rs側に実装した関数を呼び足すようにする.ただまだ作っていない もう作ったかも
-                                if is_runing_timer(app_hundle2.state()) {
-                                    next_update_time = update_time_millisecond(app_hundle2.state());
-                                } else {
-                                    next_update_time = 500;
-                                }
-                            }
-                        } else {
-                            next_update_time = 500;
-                        }
-                    }
-
-                    std::thread::sleep(std::time::Duration::from_millis(next_update_time));
-                }
-            });
-
-            //最初の値の設定
-            {
-                start_timer(app.state(), 1500);
-                chenge_now_time_longer(app.state(), 1500);
-                pause_timer(app.state());
-            }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![
+            remining_time,
+            is_runing_timer,
+            start_timer,
+            stop_timer,
+            pause_timer,
+            restart_timer,
+            chenge_emit_time
+        ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
     let window = app.get_window("main");
 
     app.run(move |app_handle, _event| {
-        let mut tmp_do_alarm_work_to_ask = do_alarm_work_to_ask.lock().unwrap();
+        // app_handle.state::<Mutex<Count>>().lock().unwrap().0 += 1;
+        // println!("{:?}", app_handle.state::<Mutex<Count>>().lock().unwrap().0);
 
-        let file_path = app_handle
-            .path_resolver()
-            .resolve_resource("../assets/sound/marimba.wav")
-            .expect("file not find");
+        match (
+            remining_time(app_handle.state()),
+            get_emit_time(app_handle.state()),
+        ) {
+            (Some(x), Some(y)) if x.as_secs() == y.as_secs() => {
+                // println!("hogehoge");
+                // time_emit_all(&app_handle.clone());
+            }
+            (None, None) => {}
+            (_, _) => {
+                println!("pugepuge");
+                time_emit_all(&app_handle.clone());
+            }
+        }
+
+        if remining_time(app_handle.state()) != get_emit_time(app_handle.state()) {
+            // time_emit_all(&app_handle.clone());
+        }
 
         // アラームを作動させるべきかの判断をしている。
         let boool: bool;
@@ -228,28 +189,27 @@ fn main() {
             boool = match remining_time(app_handle.state()) {
                 None => false,
                 _ => {
-                    remining_time(app_handle.state()).unwrap().as_secs() == 0
+                    remining_time(app_handle.state()) == Some(Duration::from_secs(0))
                         && is_runing_timer(app_handle.state())
-                        && *tmp_do_alarm_work_to_ask == false
                 }
             };
         }
 
         // アラームの作動
         if boool {
-            *tmp_do_alarm_work_to_ask = true;
-
             //windowsを最前面にする
             _ = app_handle.get_window("main").unwrap().set_focus();
 
-            //アラーム用の非同期処理で必要な部分
-            //TODO:こんなもん必要ない様にしたい
+            pause_timer(app_handle.state());
 
-            let do_alarm_work_ask_f = Arc::clone(&do_alarm_work);
-
+            let app_handle_f = app_handle.clone();
             std::thread::spawn(move || {
                 //音をならす
                 // WAVファイルを開く
+                let file_path = app_handle_f
+                    .path_resolver()
+                    .resolve_resource("../assets/sound/marimba.wav")
+                    .expect("file not find");
                 let file = File::open(&file_path).unwrap();
                 let source = Decoder::new(BufReader::new(file)).unwrap();
 
@@ -280,6 +240,12 @@ fn main() {
                                 1500 => 300,
                                 300 => 1500,
                                 _ => {
+                                    println!(
+                                        "{:?}",
+                                        get_new_time_longer(
+                                            app_handle2.state::<Mutex<NowTimerLonger>>(),
+                                        )
+                                    );
                                     panic!("now_timer_longerの値がおかしいです。")
                                 }
                             };
@@ -293,9 +259,28 @@ fn main() {
 
                         false => stop_timer(app_handle2.state::<Mutex<Timer>>()),
                     }
-                    *do_alarm_work_ask_f.lock().unwrap() = false;
                 },
             );
         }
     });
+}
+
+fn time_emit_all(app_handle: &AppHandle) {
+    let tmp_reming_time = remining_time(app_handle.state());
+
+    //TODO:関数にしてやりたい.
+    app_handle
+        .emit_all(
+            "now-remining-time",
+            match tmp_reming_time {
+                None => 0,
+                _ => tmp_reming_time.unwrap().as_secs(),
+            },
+        )
+        .unwrap();
+
+    app_handle
+        .emit_all("is_runing", is_runing_timer(app_handle.state()))
+        .unwrap();
+    chenge_emit_time(app_handle.state(), tmp_reming_time);
 }
