@@ -1,3 +1,8 @@
+# ポモドーロタイマー
+
+ポモドーロタイマーです．
+未完成な状態のため使用等は推奨しません
+
 # Tauri + React + Typescript
 
 This template should help get you started developing with Tauri, React and Typescript in Vite.
